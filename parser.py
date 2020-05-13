@@ -62,25 +62,25 @@ def simple_url_parser(base_url, head_tag, head_attributes, body_tag, body_attrib
 
 if __name__== "__main__":
 
-    # result = simple_url_parser(base_url="https://3dnews.ru/",
-    #                            head_tag="div",
-    #                            head_attributes={"class": "entry-header"},
-    #                            body_tag="div",
-    #                            body_attributes={"class": "js-mediator-article"},
-    #                            first_page_num=990000,
-    #                            last_page_num=1010395,
-    #                            quiet=False)
-    # list_to_file(result, "data/3dnews.ru.list")
+    result = simple_url_parser(base_url="https://3dnews.ru/",
+                               head_tag="div",
+                               head_attributes={"class": "entry-header"},
+                               body_tag="div",
+                               body_attributes={"class": "js-mediator-article"},
+                               first_page_num=990000,
+                               last_page_num=1010395,
+                               quiet=False)
+    list_to_file(result, "data/3dnews.ru.list")
 
-    # result = simple_url_parser(base_url="https://overclockers.ru/softnews/show/",
-    #                            head_tag="h1",
-    #                            head_attributes={"itemprop": "headline"},
-    #                            body_tag="div",
-    #                            body_attributes={"itemprop": "articleBody"},
-    #                            first_page_num=85000,
-    #                            last_page_num=103198,
-    #                            quiet=False)
-    # list_to_file(result, "data/overclockers.ru.list")
+    result = simple_url_parser(base_url="https://overclockers.ru/softnews/show/",
+                               head_tag="h1",
+                               head_attributes={"itemprop": "headline"},
+                               body_tag="div",
+                               body_attributes={"itemprop": "articleBody"},
+                               first_page_num=85000,
+                               last_page_num=103198,
+                               quiet=False)
+    list_to_file(result, "data/overclockers.ru.list")
 
     result = simple_url_parser(base_url="https://www.opennet.ru/opennews/art.shtml?num=",
                                head_tag="span",
