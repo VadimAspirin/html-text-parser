@@ -29,11 +29,12 @@ def canonize(source):
 
     return [x for x in [y.strip(stop_symbols) for y in source.lower().split()] if len(x) > 1 and re.match(white_list_re, x) and (x not in stop_words)]
 
+
 def genshingle(source):
-    shingleLen = 10 #длина шингла
+    shingleLen = 10
     out = []
     for i in range(len(source)-(shingleLen-1)):
-    out.append (' '.join( [x for x in source[i:i+shingleLen]] ).encode('utf-8'))
+        out.append(' '.join( [x for x in source[i:i+shingleLen]] ).encode('utf-8'))
 
     return out
 
@@ -41,5 +42,3 @@ def genshingle(source):
 data = [canonize(d) for d in data]
 print(data[100])
 
-
-# print(re.match(u"^[A-Za-zА-Яа-яё]*$", "правила"))
