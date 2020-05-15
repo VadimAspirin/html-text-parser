@@ -85,7 +85,6 @@ def shingle(data, proc_count=16, quiet=True, max_count_near_papers=5):
         t_start = time.time()
 
     _data = [[i, j] for i, j in zip([data_shingle]*len(data_shingle), range(len(data_shingle)))]
-    _data = _data[:50]
 
     results = []
     with Pool(processes=proc_count) as pool:
