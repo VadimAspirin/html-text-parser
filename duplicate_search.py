@@ -70,7 +70,7 @@ def __shingle_process(params):
     return (i, near_paper, max_score)
 
 
-def shingle(data, proc_count=16, quiet=True, max_count_near_papers=5):
+def shingle(data, proc_count=4, quiet=True, max_count_near_papers=5):
 
     if not quiet:
         print("data_processing ...")
@@ -85,6 +85,7 @@ def shingle(data, proc_count=16, quiet=True, max_count_near_papers=5):
         t_start = time.time()
 
     _data = [[i, j] for i, j in zip([data_shingle]*len(data_shingle), range(len(data_shingle)))]
+    # _data = _data[:500]
 
     results = []
     with Pool(processes=proc_count) as pool:
@@ -130,4 +131,4 @@ if __name__== "__main__":
     data = data[:,1]
     data = [u' '.join(d) for d in data]
 
-    shingle(data, quiet=False)
+    shingle(data, proc_count=16, quiet=False, max_count_near_papers=150)
