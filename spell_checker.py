@@ -3,20 +3,25 @@ import numpy as np
 import re
 
 
-
-def three_grams_dict_generate(tokens):
-    three_grams = {}
+def ngrams_dict_generate(tokens, n_gram=3):
+    _n_grams = {}
     for token in tokens:
-        for i in range(len(token)-2):
-            three_gram = f'{token[i]}{token[i+1]}{token[i+2]}'
-            if three_gram not in three_grams:
-                three_grams[three_gram] = []
-            three_grams[three_gram].append(token)
 
-    for k in three_grams:
-        three_grams[k] = list(set(three_grams[k]))
+        if not len(token) > (n_gram-1):
+            continue
+        for i in range(len(token)-(n_gram-1)):
+            _n_gram = ""
+            for n in range(n_gram):
+                _n_gram += token[i+n]
+
+            if _n_gram not in _n_grams:
+                _n_grams[_n_gram] = []
+            _n_grams[_n_gram].append(token)
+
+    for k in _n_grams:
+        _n_grams[k] = list(set(_n_grams[k]))
         
-    return three_grams
+    return _n_grams
 
 
 def damerau_levenshtein_distance(s1, s2):
@@ -45,14 +50,17 @@ def damerau_levenshtein_distance(s1, s2):
     return d[lenstr1-1,lenstr2-1]
 
 
-def spell_checker(_dict, word, max_out=None):
-    assert len(word) > 2
-    _three_grams = []
-    for i in range(len(word)-2):
-        _three_grams.append(f'{word[i]}{word[i+1]}{word[i+2]}')
+def spell_checker_damerau_levenshtein(_dict, word, max_out=None, max_len_diff=3, n_gram=3):
+    assert len(word) > (n_gram-1)
+    _n_grams = []
+    for i in range(len(word)-(n_gram-1)):
+        res = ""
+        for n in range(n_gram):
+            res += word[i+n]
+        _n_grams.append(res)
 
     word_candidates = []
-    for i in _three_grams:
+    for i in _n_grams:
         if i not in _dict:
             continue
         word_candidates += _dict[i]
@@ -61,21 +69,23 @@ def spell_checker(_dict, word, max_out=None):
     for i in range(len(word_candidates)):
         if word_candidates[i][:1] != word[:1]:
             word_candidates[i] = ""
-        if abs(len(word_candidates[i]) - len(word)) > 3:
+        if abs(len(word_candidates[i]) - len(word)) > max_len_diff:
             word_candidates[i] = ""
-    word_candidates = [i for i in word_candidates if i]
-    word_candidates_score = [damerau_levenshtein_distance(i, word) for i in word_candidates]
 
-    word_candidates = np.array(word_candidates)
-    word_candidates_score = np.array(word_candidates_score)
-    buf = np.array([word_candidates, word_candidates_score]).T
+    word_candidates = np.array([i for i in word_candidates if i])
+    word_candidates_score = np.array([damerau_levenshtein_distance(i, word) for i in word_candidates])
+    word_candidates_idx = np.arange(len(word_candidates))
+
+    buf = np.array([word_candidates_idx, word_candidates_score]).T
     buf = buf[buf[:,1].argsort()]
-    word_candidates = buf[:,0].T.tolist()
+    word_candidates_idx_sort = buf[:,0].T
+    word_candidates_score_sort = buf[:,1].T
+    word_candidates = word_candidates[word_candidates_idx_sort]
 
     if max_out and len(word_candidates) > max_out:
         word_candidates = word_candidates[:max_out]
 
-    return word_candidates
+    return word_candidates.tolist()
 
 
 
@@ -96,14 +106,13 @@ if __name__== "__main__":
         _text = reg.sub('', _text)
         _text = _text.lower().replace(u'ё', u'е')
         _tokens = _text.split(" ")
-        _tokens = [i for i in _tokens if len(i) > 2]
 
         tokens += _tokens
 
     tokens = list(set(tokens))
-    three_grams_dict = three_grams_dict_generate(tokens)
+    three_grams_dict = ngrams_dict_generate(tokens, n_gram=3)
 
 
-    print(spell_checker(three_grams_dict, u"новй", max_out=10))
-    print(spell_checker(three_grams_dict, u"послетний", max_out=10))
-    print(spell_checker(three_grams_dict, u"поестка", max_out=10))
+    print(spell_checker_damerau_levenshtein(three_grams_dict, u"новй", max_out=10))
+    print(spell_checker_damerau_levenshtein(three_grams_dict, u"послетний", max_out=10))
+    print(spell_checker_damerau_levenshtein(three_grams_dict, u"поестка", max_out=10))
