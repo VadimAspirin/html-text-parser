@@ -2,7 +2,6 @@ from html_text_parser import list_from_file
 import numpy as np
 import re
 import Stemmer
-import time
 
 
 def str_to_norm_words(in_str):
@@ -99,7 +98,7 @@ def vsm_ranging(request_str, docs_ids, tokens, word_count_per_doc):
     sort_buf = np.array([docs_ids, cos_metric]).T
     sort_buf = sort_buf[sort_buf[:,1].argsort()]
 
-    return np.flip(sort_buf[:,0]).astype(int)
+    return np.flip(sort_buf[:,0]).astype(int), np.flip(sort_buf[:,1])
 
 
 def bm25_ranging(request_str, docs_ids, tokens, word_count_per_doc, docs_tf, docs_idf, k1=2.0, b=0.75):
@@ -116,18 +115,47 @@ def bm25_ranging(request_str, docs_ids, tokens, word_count_per_doc, docs_tf, doc
     sort_buf = np.array([docs_ids, score]).T
     sort_buf = sort_buf[sort_buf[:,1].argsort()]
 
-    return np.flip(sort_buf[:,0]).astype(int)
+    return np.flip(sort_buf[:,0]).astype(int), np.flip(sort_buf[:,1])
+
+
+def map_relevant_metrics(target, k):
+    assert vsm_relevant.dtype == 'bool'
+    N = len(target)
+    mean_ap = 0
+    for i in range(N):
+        counter = 0
+        ap = 0
+        for j in range(0, k):
+            if target[i][j]:
+                counter += 1
+                ap += counter / (j + 1)
+        mean_ap += ap / k
+    return mean_ap / N
+
+
+def ndcg_relevant_metrics(target, k):
+    assert vsm_relevant.dtype == 'bool'
+    N = len(target)
+    mean_ndcg = 0
+    for i in range(N):
+        dcg = 0
+        idcg = 0
+        for j in range(0, k):
+            dcg += target[i][j] / np.log2((j + 1) + 1)
+            idcg += 1 / np.log2((j + 1) + 1)
+        dcg /= k
+        idcg /= k
+        mean_ndcg += dcg/idcg
+    return mean_ndcg / N
 
 
 
 if __name__== "__main__":
+    
     docs_3dnews = list_from_file("data/3dnews.ru.list")
     docs_overclockers = list_from_file("data/overclockers.ru.list")
     docs_opennet = list_from_file("data/opennet.ru.list")
     docs = docs_3dnews + docs_overclockers + docs_opennet
-
-    # docs = docs[800:1000]
-    t_start = time.time()
 
     docs_norm = docs_normolize(docs)
     index_invert = docs_to_index_invert(docs_norm)
@@ -144,18 +172,77 @@ if __name__== "__main__":
          u'Какую файловую систему выбрать',
          u'Смартфоны samsung',
         ]
-    s = s[3]
-    docs_ids = boolean_retrieval(s, index_invert, boolean_operation='and')
 
-    res = vsm_ranging(s, docs_ids, tokens, word_count_per_doc)
-    for i in range(5):
-        print(docs[res[i]])
+    max_result_count = 30
+    for request in s:
+        print("Request:", request)
+
+        docs_ids = boolean_retrieval(request, index_invert, boolean_operation='and')
+
+        print("Ranging: VSM")
+        res, score = vsm_ranging(request, docs_ids, tokens, word_count_per_doc)
+        if len(res) > max_result_count:
+            res = res[:max_result_count]
+            score = score[:max_result_count]
+        print("Score:", list(score))
+        for i in range(len(res)):
+            print(i, docs[res[i]])
+
+        print()
+
+        print("Ranging: BM25")
+        res, score = bm25_ranging(request, docs_ids, tokens, word_count_per_doc, docs_tf, docs_idf)
+        if len(res) > max_result_count:
+            res = res[:max_result_count]
+            score = score[:max_result_count]
+        print("Score:", list(score))
+        for i in range(len(res)):
+            print(i, docs[res[i]])
+
+        print()
+
+
+    vsm_relevant = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0],
+                             [1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0],
+                             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                             [0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                             [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0]]).astype(bool)
+    bm25_relevant = np.array([[1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1],
+                              [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0],
+                              [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+                              [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                              [0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1]]).astype(bool)
+    
+    map1 = map_relevant_metrics(vsm_relevant, 1)
+    map5 = map_relevant_metrics(vsm_relevant, 5)
+    map10 = map_relevant_metrics(vsm_relevant, 10)
+    map15 = map_relevant_metrics(vsm_relevant, 15)
+    print("VSM:")
+    print(f"map@1: {map1}\nmap@5: {map5}\nmap@10: {map10}\nmap@15: {map15}")
 
     print()
 
-    res = bm25_ranging(s, docs_ids, tokens, word_count_per_doc, docs_tf, docs_idf)
-    for i in range(5):
-        print(docs[res[i]])
+    map1 = map_relevant_metrics(bm25_relevant, 1)
+    map5 = map_relevant_metrics(bm25_relevant, 5)
+    map10 = map_relevant_metrics(bm25_relevant, 10)
+    map15 = map_relevant_metrics(bm25_relevant, 15)
+    print("BM25:")
+    print(f"map@1: {map1}\nmap@5: {map5}\nmap@10: {map10}\nmap@15: {map15}")
 
-    t_end = time.time()
-    print(t_end - t_start)
+    print()
+
+    ndcg1 = ndcg_relevant_metrics(vsm_relevant, 1)
+    ndcg5 = ndcg_relevant_metrics(vsm_relevant, 5)
+    ndcg10 = ndcg_relevant_metrics(vsm_relevant, 10)
+    ndcg15 = ndcg_relevant_metrics(vsm_relevant, 15)
+    print("VSM:")
+    print(f"ndcg@1: {ndcg1}\nndcg@5: {ndcg5}\nndcg@10: {ndcg10}\nndcg@15: {ndcg15}")
+
+    print()
+
+    ndcg1 = ndcg_relevant_metrics(bm25_relevant, 1)
+    ndcg5 = ndcg_relevant_metrics(bm25_relevant, 5)
+    ndcg10 = ndcg_relevant_metrics(bm25_relevant, 10)
+    ndcg15 = ndcg_relevant_metrics(bm25_relevant, 15)
+    print("BM25:")
+    print(f"ndcg@1: {ndcg1}\nndcg@5: {ndcg5}\nndcg@10: {ndcg10}\nndcg@15: {ndcg15}")
